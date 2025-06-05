@@ -2,7 +2,7 @@ import gymnasium as gym
 import numpy as np
 import torch
 
-# Set up Ant-v4 using gymnasium's Mujoco backend
+# Set up Ant-v5 using gymnasium's Mujoco backend
 def run_and_save():
     env = gym.make("Ant-v5", render_mode="human")
     dataset = []
