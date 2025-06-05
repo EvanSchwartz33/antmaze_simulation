@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+*.pkl
+*.pt
+
+# Environments
+env/
+.venv/
+antmaze_env/
+isaac_venv_37/
+
+# OS-specific
+.DS_Store
+
+# Logs & checkpoints
+*.log
+*.ckpt
+checkpoints/
+runs/
+wandb/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# VS Code
+.vscode/
+
+# Third-party big folders (if not needed in repo)
+isaacgym/
+IsaacGymEnvs/
