@@ -4,7 +4,7 @@ __pycache__/
 *.so
 *.egg-info/
 *.pkl
-*.pt
+
 
 # Environments
 env/
@@ -28,6 +28,4 @@ wandb/
 # VS Code
 .vscode/
 
-# Third-party big folders (if not needed in repo)
-isaacgym/
-IsaacGymEnvs/
+
