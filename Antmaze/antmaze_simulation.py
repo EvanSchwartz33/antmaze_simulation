@@ -6,10 +6,24 @@ import torch
 def run_and_save():
     env = gym.make("Ant-v5", render_mode="human")
     dataset = []
-    goal = np.array([1.5, 1.5])
+    goal = np.array([2.5, 2.5])
+    print(env.spec.entry_point)
 
-    def reward_fn(pos):
-        return -np.linalg.norm(pos - goal)
+
+
+    def reward_fn(obs, next_obs, info):
+        xpos = env.unwrapped.data.qpos[0]
+        ypos = env.unwrapped.data.qpos[1]
+        dist_from_goal = np.linalg.norm(np.array([xpos, ypos]) - goal)
+
+        reward = -dist_from_goal
+
+        torso_z = obs[0]
+
+        reward += 0.5 * torso_z
+
+        return reward
+
 
     def policy(obs):
         return env.action_space.sample()
@@ -23,8 +37,10 @@ def run_and_save():
             action = policy(obs)
             next_obs, reward, terminated, truncated, info = env.step(action)
 
-            xpos, ypos = info["x_position"], info["y_position"] if "x_position" in info else (0, 0)
-            custom_reward = reward_fn(np.array([xpos, ypos]))
+            xpos = env.unwrapped.data.qpos[0]
+            ypos = env.unwrapped.data.qpos[1]
+
+            custom_reward = reward_fn(obs, next_obs, info)
             done_flag = terminated or truncated
 
             dataset.append({
@@ -32,13 +48,14 @@ def run_and_save():
                 'action': action,
                 'reward': custom_reward,
                 'next_obs': next_obs,
-                'done': done_flag
+                'done': done_flag,
+                'position': (xpos, ypos)
             })
 
             obs = next_obs
             done = done_flag
             steps += 1
-
+    
     env.close()
     torch.save(dataset, "antmaze_dataset.pt")
     print("Saved", len(dataset), "steps to antmaze_dataset.pt")

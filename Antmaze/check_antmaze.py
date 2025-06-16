@@ -17,7 +17,8 @@ class AntMazeDataset(Dataset):
             torch.tensor(sample['action'], dtype=torch.float32),
             torch.tensor(sample['reward'], dtype=torch.float32),
             torch.tensor(sample['next_obs'], dtype=torch.float32),
-            torch.tensor(sample['done'], dtype=torch.float32)
+            torch.tensor(sample['done'], dtype=torch.float32),
+            torch.tensor(sample['position'], dtype=torch.float32)
         )
 
 
@@ -28,9 +29,9 @@ loader = DataLoader(dataset, batch_size=1, shuffle=False)
 x_vals, y_vals, rewards = [], [], []
 
 
-for obs, action, reward, next_obs, done in loader:
-    x_vals.append(obs[0][0].item())  
-    y_vals.append(obs[0][1].item())  
+for obs, action, reward, next_obs, done, position in loader:
+    x_vals.append(position[0][0].item())  
+    y_vals.append(position[0][1].item())  
     rewards.append(reward.item())
 
 
