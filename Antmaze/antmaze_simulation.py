@@ -1,46 +1,51 @@
 import gymnasium as gym
+import gymnasium_robotics
 import numpy as np
 import torch
+import pickle
+from models import ActorCritic
 
-# Set up Ant-v5 using gymnasium's Mujoco backend
 def run_and_save():
-    env = gym.make("Ant-v5", render_mode="human")
+    env = gym.make("AntMaze_UMaze-v5", render_mode="human")
     dataset = []
-    goal = np.array([2.5, 2.5])
-    print(env.spec.entry_point)
 
+    obs_dict, _ = env.reset()
+    obs = obs_dict["observation"]
+    goal = obs_dict["desired_goal"]
+    achieved_pos = obs_dict["achieved_goal"]
 
+    obs_dim = obs.shape[0]
+    action_dim = env.action_space.shape[0]
 
-    def reward_fn(obs, next_obs, info):
-        xpos = env.unwrapped.data.qpos[0]
-        ypos = env.unwrapped.data.qpos[1]
-        dist_from_goal = np.linalg.norm(np.array([xpos, ypos]) - goal)
-
-        reward = -dist_from_goal
-
-        torso_z = obs[0]
-
-        reward += 0.5 * torso_z
-
-        return reward
-
+    policy_net = ActorCritic(obs_dim, action_dim)
+    policy_net.load_state_dict(torch.load("ppo_antmaze.pt"))
+    policy_net.eval()
 
     def policy(obs):
-        return env.action_space.sample()
+        obs_tensor = torch.tensor(obs, dtype=torch.float32).unsqueeze(0)
+        with torch.no_grad():
+            action, _, _ = policy_net.act(obs_tensor)
+        return action.squeeze(0).numpy()
+
+    def reward_fn(achieved_pos, next_pos, obs):
+        forward_reward = next_pos[0] - achieved_pos[0]
+        torso_z_reward = 1.0 if obs[0] > 0.4 else -1.0
+        return forward_reward + torso_z_reward
 
     for episode in range(10):
-        obs, _ = env.reset()
+        obs_dict, _ = env.reset()
+        obs = obs_dict["observation"]
+        achieved_pos = obs_dict["achieved_goal"]
         done = False
         steps = 0
 
-        while not done and steps < 10000:
+        while not done and steps < 1000:
             action = policy(obs)
-            next_obs, reward, terminated, truncated, info = env.step(action)
+            next_obs_dict, _, terminated, truncated, _ = env.step(action)
+            next_obs = next_obs_dict["observation"]
+            next_pos = next_obs_dict["achieved_goal"]
 
-            xpos = env.unwrapped.data.qpos[0]
-            ypos = env.unwrapped.data.qpos[1]
-
-            custom_reward = reward_fn(obs, next_obs, info)
+            custom_reward = reward_fn(achieved_pos, next_pos, obs)
             done_flag = terminated or truncated
 
             dataset.append({
@@ -49,16 +54,23 @@ def run_and_save():
                 'reward': custom_reward,
                 'next_obs': next_obs,
                 'done': done_flag,
-                'position': (xpos, ypos)
+                'position': achieved_pos,
+                'next_position': next_pos,
+                'goal': goal
             })
 
             obs = next_obs
+            achieved_pos = next_pos
             done = done_flag
             steps += 1
-    
+
     env.close()
     torch.save(dataset, "antmaze_dataset.pt")
-    print("Saved", len(dataset), "steps to antmaze_dataset.pt")
+    print(f"✅ Saved {len(dataset)} transitions to antmaze_dataset.pt")
+
+    with open("ant_policy.pkl", "wb") as f:
+        pickle.dump(policy_net.state_dict(), f)
+    print("✅ Saved policy weights to ant_policy.pkl")
 
 
 if __name__ == "__main__":
