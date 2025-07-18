@@ -34,7 +34,7 @@ class RolloutBuffer:
         rews = np.append(self.rew_buf[path_slice], last_value)
         vals = np.append(self.val_buf[path_slice], last_value)
 
-        # GAE advantage calculation
+        
         deltas = rews[:-1] + self.gamma * vals[1:] - vals[:-1]
         adv = np.zeros_like(deltas)
         gae = 0.0

@@ -3,6 +3,7 @@ import gymnasium as gym
 import gymnasium_robotics
 from models import ActorCritic
 from trainer import train_ppo
+import numpy as np
 
 def evaluate_policy(env_id, model_path, episodes=3, render=True, device="cpu"):
     env = gym.make(env_id, render_mode="human" if render else None)
@@ -32,8 +33,16 @@ def evaluate_policy(env_id, model_path, episodes=3, render=True, device="cpu"):
         next_pos = next_obs_dict["achieved_goal"]
 
         
-        custom_reward = next_pos[0] - achieved_pos[0]
-        total_reward += custom_reward
+        reward_forward = obs[13]
+        reward_alive = 1.0 if obs[0] > 0.5 else -1.0
+        reward_ctrl = -0.001 * np.sum(np.square(action_np))
+        ang_vel = obs[16:19]
+        reward_stability = -0.01 * np.linalg.norm(ang_vel)
+
+        
+
+        custom_rew = next_pos[0] - achieved_pos[0] + (1.0 * reward_forward + 2 * reward_alive + 0.001 * reward_ctrl + 0.01 * reward_stability)
+        total_reward += custom_rew
 
         obs = next_obs
         achieved_pos = next_pos
@@ -50,5 +59,5 @@ if __name__ == "__main__":
     MODEL_PATH = "ppo_antmaze.pt"
     DEVICE = "cpu"  # or "cuda" if using GPU
 
-    train_ppo(env_id=ENV_ID, total_steps=1000000, device=DEVICE)
+    train_ppo(env_id=ENV_ID, total_steps=15000000, device=DEVICE)
     evaluate_policy(ENV_ID, MODEL_PATH, episodes=3, render=True, device=DEVICE)

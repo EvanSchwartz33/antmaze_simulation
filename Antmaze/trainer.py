@@ -5,7 +5,7 @@ import numpy as np
 from models import ActorCritic
 from buffer import RolloutBuffer
 
-def train_ppo(env_id="AntMaze_UMaze-v5", total_steps=1000, steps_per_epoch=2048, epochs=10,
+def train_ppo(env_id="AntMaze_UMaze-v5", total_steps=1000, steps_per_epoch=8192, epochs=15,
               minibatch_size=64, gamma=0.99, lam=0.95, clip_ratio=0.2,
               pi_lr=3e-4, vf_lr=1e-3, device='cpu'):
 
@@ -38,12 +38,49 @@ def train_ppo(env_id="AntMaze_UMaze-v5", total_steps=1000, steps_per_epoch=2048,
 
         achieved_pos = obs_dict["achieved_goal"]
         next_pos = next_obs_dict["achieved_goal"]
-        torso_z = obs[1]
-        if obs[1] < 0.4:
+        """custom_rew = 0
+
+        torso_z = obs[0]
+        if obs[0] < 0.3:
             z_reward = -1
         else:
             z_reward = 1
-        custom_rew = next_pos[0] - achieved_pos[0] + z_reward
+
+        upright_quat_w = obs[4]
+
+        if upright_quat_w > 0.8:
+            custom_rew += 10
+        elif upright_quat_w < 0.3:
+            custom_rew -= 10
+        else:
+            custom_rew += 0"""
+        
+        
+        #energy_penalty = 0.001 * np.square(act_np).sum()
+
+
+        z_height = obs[0]
+        next_z_height = next_obs[0]
+        pitch = obs[2]
+        roll = obs[3]
+        ang_vel = obs[16:19]
+        
+        
+        tilt_penalty = -0.1 * (pitch ** 2 + roll ** 2)
+        reward_forward = obs[13]
+        reward_ctrl = -0.001 * np.sum(np.square(act_np))
+        reward_stability = -0.05 * np.linalg.norm(ang_vel)
+        upright_bonus = np.clip((z_height - 0.2) * 5.0, 0.0, 1.0)
+        reward_alive = upright_bonus * 1.0 if next_z_height > 0.2 else -2.0
+        upright_next = np.clip((next_z_height - 0.2) * 5.0, 0.0, 1.0)
+        upright_progress = upright_next - upright_bonus
+        reward_recovery = 2.0 * upright_progress if upright_progress > 0 else 0.0
+
+        custom_rew = (abs(next_pos[0] - achieved_pos[0]) + reward_forward + reward_alive + reward_recovery + 0.05 * reward_ctrl + 0.05 * reward_stability + tilt_penalty)
+        
+        
+        
+
 
         rew = custom_rew  # override the environment reward
         print(f"Stored reward: {rew:.3f}")

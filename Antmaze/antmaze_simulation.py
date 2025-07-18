@@ -39,7 +39,7 @@ def run_and_save():
         done = False
         steps = 0
 
-        while not done and steps < 1000:
+        while not done and steps < 10000:
             action = policy(obs)
             next_obs_dict, _, terminated, truncated, _ = env.step(action)
             next_obs = next_obs_dict["observation"]
